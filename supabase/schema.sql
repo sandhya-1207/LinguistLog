@@ -291,7 +291,10 @@ create policy "Users can update own settings" on public.settings
 
 -- Profile trigger to create default skill_progress and settings on profile creation
 create or replace function public.handle_new_user_profile()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
 begin
   -- Initialize default skills progress (Reading, Listening, Speaking, Writing)
   insert into public.skill_progress (user_id, skill, current_level, target_level, progress_percentage)

@@ -206,3 +206,32 @@ create policy "Users can delete own rest days" on public.rest_days for delete us
 create policy "Users can view own settings" on public.settings for select using (auth.uid() = user_id);
 create policy "Users can insert own settings" on public.settings for insert with check (auth.uid() = user_id);
 create policy "Users can update own settings" on public.settings for update using (auth.uid() = user_id);
+
+-- Profile trigger to create default skill_progress and settings on profile creation
+create or replace function public.handle_new_user_profile()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  -- Initialize default skills progress (Reading, Listening, Speaking, Writing)
+  insert into public.skill_progress (user_id, skill, current_level, target_level, progress_percentage)
+  values
+    (new.id, 'Reading', new.current_level, new.target_level, 10),
+    (new.id, 'Listening', new.current_level, new.target_level, 10),
+    (new.id, 'Speaking', new.current_level, new.target_level, 10),
+    (new.id, 'Writing', new.current_level, new.target_level, 10)
+  on conflict do nothing;
+
+  -- Initialize settings
+  insert into public.settings (user_id, theme, notifications_enabled, timezone)
+  values (new.id, 'light', false, new.timezone)
+  on conflict do nothing;
+
+  return new;
+end;
+$$;
+
+create or replace trigger on_profile_created
+  after insert on public.profiles
+  for each row execute procedure public.handle_new_user_profile();
